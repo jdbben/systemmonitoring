@@ -54,23 +54,21 @@ function parseSensors(output: string) {
   };
 }
 app.get("/stats", async (req, res) => {
-  const key = req.headers["x-api-key"];
 
   const apiKey = process.env.API_KEY;
 
-  if (!key || Array.isArray(key) || key.trim() !== apiKey) {
-    return res.status(403).json({ error: "Unauthorized" });
-  }
-try {  const cpu = await si.currentLoad();
+ 
+try {  
+    const cpu = await si.currentLoad();
     const mem = await si.mem();
     const temp = await si.cpuTemperature();
     const disks = await si.fsSize();
     const network = await si.networkStats();
     const sensorsRaw = await getSensors();
     const temps = parseSensors(sensorsRaw);
- const formatBytesToMB = (bytes: number) => Math.round(bytes / 1024 / 1024);
-const formatBytesToGB = (bytes: number) => (bytes / 1024 / 1024 / 1024).toFixed(1);
-
+    const formatBytesToMB = (bytes: number) => Math.round(bytes / 1024 / 1024);
+    const formatBytesToGB = (bytes: number) => (bytes / 1024 / 1024 / 1024).toFixed(1);
+ 
 res.json({
   cpu: {
     usage_percent: Number(cpu.currentLoad.toFixed(2)),
