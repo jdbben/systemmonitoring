@@ -54,8 +54,11 @@ function parseSensors(output: string) {
   };
 }
 app.get("/stats", async (req, res) => {
-    const key = req.headers["x-api-key"];
-  if (key !== process.env.API_KEY) {
+  const key = req.headers["x-api-key"];
+
+  const apiKey = process.env.API_KEY;
+
+  if (!key || Array.isArray(key) || key.trim() !== apiKey) {
     return res.status(403).json({ error: "Unauthorized" });
   }
 try {  const cpu = await si.currentLoad();
