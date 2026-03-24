@@ -18,3 +18,5 @@ EXPOSE 5000
 
 # Run the app with ts-node
 CMD ["npx", "ts-node", "index.ts"]
+
+RUN apt-get update && apt-get install -y lm-sensors
