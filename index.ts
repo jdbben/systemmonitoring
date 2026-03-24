@@ -55,48 +55,43 @@ function parseSensors(output: string) {
 }
 app.get("/stats", async (req, res) => {
 
-  const apiKey = process.env.API_KEY;
+  try {
+    const cpu = await si.currentLoad().catch(() => ({ currentLoad: 0 }));
+    const mem = await si.mem().catch(() => ({ used: 0, total: 0 }));
+    const temp = await si.cpuTemperature().catch(() => ({ main: 0 }));
+    const disks = await si.fsSize().catch(() => []);
+    const network = await si.networkStats().catch(() => []);
+    const sensorsRaw = await getSensors().catch(() => "");
+    const temps = sensorsRaw ? parseSensors(sensorsRaw) : { cpu_package: 0, cpu_cores: [], gpu: 0 };
 
- 
-try {  
-    const cpu = await si.currentLoad();
-    const mem = await si.mem();
-    const temp = await si.cpuTemperature();
-    const disks = await si.fsSize();
-    const network = await si.networkStats();
-    const sensorsRaw = await getSensors();
-    const temps = parseSensors(sensorsRaw);
     const formatBytesToMB = (bytes: number) => Math.round(bytes / 1024 / 1024);
     const formatBytesToGB = (bytes: number) => (bytes / 1024 / 1024 / 1024).toFixed(1);
- 
-res.json({
-  cpu: {
-    usage_percent: Number(cpu.currentLoad.toFixed(2)),
-    temperature_c: temps.cpu_package || temp.main
-  },
 
-  memory: {
-    usage_percent: Number(((mem.used / mem.total) * 100).toFixed(2)),
-    total_mb: formatBytesToMB(mem.total),
-    used_mb: formatBytesToMB(mem.used)
-  },
-
-  disks: disks.map(d => ({
-    mount: d.mount,
-    used_gb: formatBytesToGB(d.used),
-    total_gb: formatBytesToGB(d.size),
-    usage_percent: Number(((d.used / d.size) * 100).toFixed(1))
-  })),
-
-  network: {
-    interface: network[0]?.iface,
-    rx_kb_s: Math.round((network[0]?.rx_sec || 0) / 1024),
-    tx_kb_s: Math.round((network[0]?.tx_sec || 0) / 1024)
-  },
-
-  temperatures: temps
-});
+    res.json({
+      cpu: {
+        usage_percent: Number(cpu.currentLoad?.toFixed(2) || 0),
+        temperature_c: temps.cpu_package || temp.main || 0
+      },
+      memory: {
+        usage_percent: Number(((mem.used / mem.total) * 100).toFixed(2)) || 0,
+        total_mb: formatBytesToMB(mem.total || 0),
+        used_mb: formatBytesToMB(mem.used || 0)
+      },
+      disks: disks.map(d => ({
+        mount: d.mount,
+        used_gb: formatBytesToGB(d.used),
+        total_gb: formatBytesToGB(d.size),
+        usage_percent: Number(((d.used / d.size) * 100).toFixed(1))
+      })),
+      network: {
+        interface: network[0]?.iface || "unknown",
+        rx_kb_s: Math.round((network[0]?.rx_sec || 0) / 1024),
+        tx_kb_s: Math.round((network[0]?.tx_sec || 0) / 1024)
+      },
+      temperatures: temps
+    });
   } catch (err) {
+    console.error("Stats fetch error:", err);
     res.status(500).json({ error: "Failed to fetch stats" });
   }
 });
